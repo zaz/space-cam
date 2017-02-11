@@ -13,6 +13,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Handler;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -107,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sMgr.registerListener(this, s_press, SensorManager.SENSOR_DELAY_NORMAL);
 
 
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.SEND_SMS}, 1);
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.SEND_SMS, Manifest.permission.WRITE_SECURE_SETTINGS}, 1);
         // If user denies request, let the app crash
 
         // Acquire a reference to the system Location Manager
@@ -116,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 
         mHandler.postDelayed(main, interval);
+        Settings.Global.putString(getContentResolver(), "airplane_mode_on", "1");
     }
 
     @Override
