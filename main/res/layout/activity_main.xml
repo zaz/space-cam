@@ -42,16 +42,4 @@ tools:context="digital.hyperturtle.app.spacecam.MainActivity">
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="hPa: " />
-
-    <TextView
-        android:id="@+id/temp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="temp: " />
-
-    <TextView
-        android:id="@+id/humid"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="humid: " />
 </LinearLayout>

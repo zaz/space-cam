@@ -7,18 +7,23 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.icu.text.DateFormat;
+import android.icu.text.SimpleDateFormat;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+import java.util.Date;
 
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     public SensorManager sMgr;
     public TextView t_time;
@@ -28,22 +33,50 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public TextView t_press;
     public TextView t_temp;
     public TextView t_humid;
+    public double v_press;
+    public Location v_loc;
+    public double last_lat;
+    public double last_long;
+    public Boolean sent_message = Boolean.FALSE;
+    private int interval = 1000 * 6; // 10s seconds
 
+    Handler mHandler = new Handler();
+
+    Runnable main = new Runnable()
+    {
+        @Override
+        public void run() {
+            // FIXME: latitude and longitude are rounded to 4DP rather than the original 6DP
+            // String latitude = Location.convert(v_loc.getLatitude(), Location.FORMAT_DEGREES);
+            // String longitude = Location.convert(v_loc.getLongitude(), Location.FORMAT_DEGREES);
+            String latitude = String.valueOf(v_loc.getLatitude());
+            String longitude = String.valueOf(v_loc.getLongitude());
+            String altitude = String.valueOf((int)v_loc.getAltitude());
+            String bearing = String.valueOf(v_loc.getBearing());
+            String speed = String.valueOf(v_loc.getSpeed());
+            String accuracy = String.valueOf((int)v_loc.getAccuracy());
+            String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(v_loc.getTime()));
+            String pos = latitude + "," + longitude + "  " + altitude + "m  SD:" + accuracy + "m";
+            String vel = bearing + "°  " + speed + "m/s";
+            String press = String.valueOf(v_press) + "hPa";
+            t_time.setText("time: " + time + " z");
+            t_pos.setText("pos: " + pos);
+            t_vel.setText("vel: " + vel);
+            t_press.setText("hPa: " + String.valueOf(v_press));
+            //if (! sent_message) {
+            //    sent_message = Boolean.TRUE;
+            //    SmsManager smsManager = SmsManager.getDefault();
+            //    smsManager.sendTextMessage("+13302527470", null, time + " z\n" + pos + "\n" + vel + "\n" + press, null, null);
+            //}
+
+            mHandler.postDelayed(main, interval);
+        }
+    };
 
     // Define a listener that responds to location updates
     public LocationListener locationListener = new LocationListener() {
         public void onLocationChanged(Location location) {
-            // FIXME: latitude and longitude are rounded to 4DP rather than the original 6DP
-            String latitude = Location.convert(location.getLatitude(), Location.FORMAT_DEGREES);
-            String longitude = Location.convert(location.getLongitude(), Location.FORMAT_DEGREES);
-            String altitude = String.valueOf(location.getAltitude());
-            String bearing = String.valueOf(location.getBearing());
-            String speed = String.valueOf(location.getSpeed());
-            String accuracy = String.valueOf(location.getAccuracy());
-            String time = String.valueOf(location.getTime());
-            t_time.setText("time: " + time + "ms");
-            t_pos.setText("pos: " + latitude + "," + longitude + "  " + altitude + "m  SD:" + accuracy + "m");
-            t_vel.setText("vel: " + bearing + "°  " + speed + "m/s");
+            v_loc = location;
         }
 
         public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -65,29 +98,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         t_vel = (TextView) findViewById(R.id.vel);
         t_lux = (TextView) findViewById(R.id.lux);
         t_press = (TextView) findViewById(R.id.press);
-        t_temp = (TextView) findViewById(R.id.temp);
-        t_humid = (TextView) findViewById(R.id.humid);
 
         SensorManager sMgr = (SensorManager) this.getSystemService(SENSOR_SERVICE);
 
         Sensor s_lux = sMgr.getDefaultSensor(Sensor.TYPE_LIGHT);
         Sensor s_press = sMgr.getDefaultSensor(Sensor.TYPE_PRESSURE);
-        Sensor s_temp = sMgr.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE);
-        Sensor s_humid = sMgr.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY);
         sMgr.registerListener(this, s_lux, SensorManager.SENSOR_DELAY_NORMAL);
         sMgr.registerListener(this, s_press, SensorManager.SENSOR_DELAY_NORMAL);
-        sMgr.registerListener(this, s_temp, SensorManager.SENSOR_DELAY_NORMAL);
-        sMgr.registerListener(this, s_humid, SensorManager.SENSOR_DELAY_NORMAL);
 
+
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.SEND_SMS}, 1);
+        // If user denies request, let the app crash
 
         // Acquire a reference to the system Location Manager
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         // Register the listener with the Location Manager to receive location updates
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            // If user denies request, let the app crash
-        }
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+
+        mHandler.postDelayed(main, interval);
     }
 
     @Override
@@ -105,11 +133,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if (sensor.getType() == Sensor.TYPE_LIGHT) {
                 t_lux.setText("lux: " + String.valueOf(val));
             } else if (sensor.getType() == Sensor.TYPE_PRESSURE) {
-                t_press.setText("hPa: " + String.valueOf(val));
-            } else if (sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE) {
-                t_temp.setText("temp: " + String.valueOf(val));
-            } else if (sensor.getType() == Sensor.TYPE_RELATIVE_HUMIDITY) {
-                t_humid.setText("humid: " + String.valueOf(val));
+                v_press = val;
             }
         }
 
